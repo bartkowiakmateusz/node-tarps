@@ -106,6 +106,7 @@ tarps.prototype.get = function(tableName, callback){
 	
 	var selectQuery = buildSelectQuery({
 		tableName: tableName,
+		distinctClause: this.distinctClause,
 		selectClause: this.selectClause,
 		joinClause: this.joinClause,
 		whereClause: whereData.clause,
@@ -114,7 +115,7 @@ tarps.prototype.get = function(tableName, callback){
 	});
 	
 	var conn = this.connection;
-
+	console.log(selectQuery);
 	conn.query("PREPARE statement FROM \'"+selectQuery+"\'");
 	
 	var indexCode = 96; // 96 = a
@@ -144,14 +145,16 @@ tarps.prototype.get = function(tableName, callback){
 		}	
 	}
 	var usingClause = (indexCode>96?" USING "+usedIndexes.join():"");
+	
 	conn.query("EXECUTE statement"+usingClause, callback);
 	conn.query("DEALLOCATE PREPARE statement");
 	
 }
 
 buildSelectQuery = function(c){ // clauses
-	return "SELECT "
-		+(c.selectClause==""? "*":c.selectClause)
+	return "SELECT"
+		+c.distinctClause
+		+" "+(c.selectClause==""? "*":c.selectClause)
 		+" FROM "+c.tableName
 		+c.joinClause
 		+c.whereClause
