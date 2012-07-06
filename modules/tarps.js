@@ -1,10 +1,10 @@
 var _ = require("underscore");
 
-exports.active_record = function(config){
-	return new active_record(config);
+exports.init = function(config){
+	return new tarps(config);
 }
 
-active_record = function(config){
+tarps = function(config){
 	var mysql = require('mysql');
 	this.connection = mysql.createConnection(config);
 	this.connection.connect();
@@ -19,7 +19,7 @@ active_record = function(config){
 	return this;
 }
 
-active_record.prototype.select = function(arg){
+tarps.prototype.select = function(arg){
 	if (typeof(arg)=="string" && arg.length>0){
 		this.selectClause = arg;
 	}
@@ -29,15 +29,15 @@ active_record.prototype.select = function(arg){
 	return this;
 };
 
-active_record.prototype.distinct = function(){
+tarps.prototype.distinct = function(){
 	this.distinctClause = " DISTINCT";
 	return this;
 }
 
-active_record.prototype.join = function(tableName, field, direction){
+tarps.prototype.join = function(tableName, field, direction){
 	allowedDirections = ["left", "right", "outer", "inner", "left outer", "right outer"];
 	if (allowedDirections.indexOf(direction.toLowerCase())==-1){
-		console.log("active_record.join() warning: Check if you haven't misspelled the direction of join clause");
+		console.log("tarps.join() warning: Check if you haven't misspelled the direction of join clause");
 	}
 	this.joinClause += (typeof(direction)=="undefined"? "":" "+direction.toUpperCase())+" JOIN "+tableName+" ON "+field;
 	return this;
@@ -47,7 +47,7 @@ active_record.prototype.join = function(tableName, field, direction){
 // .where({name: "Mat"}, or, operator) object, bool
 // .where("name=?", ["Mat"]) string, array
 
-active_record.prototype.where = function(){
+tarps.prototype.where = function(){
 	arg = arguments;
 	if (typeof(arg[0])=="string" && typeof(arg[1])=="string"){
 		var operator = (arg[2]?arg[2]:"=");
@@ -64,7 +64,7 @@ active_record.prototype.where = function(){
 	}
 	if (typeof(arg[0])=="string" && arg[1] instanceof Array){
 		if (!_.isEmpty(this.whereObject)){
-			throw new Error("active_record.where(): You can only call where method in this way, when you haven't already called it before in the same query.");
+			throw new Error("tarps.where(): You can only call where method in this way, when you haven't already called it before in the same query.");
 		}
 		this.whereObject.readyClause = arg[0];
 		this.whereObject.params = arg[1];
@@ -73,7 +73,7 @@ active_record.prototype.where = function(){
 	return this;
 }
 
-active_record.prototype.order_by = function(){
+tarps.prototype.order_by = function(){
 	arg = arguments;
 	if (typeof(arg[0])=="object"){
 		for (i in arg[0]){
@@ -86,7 +86,7 @@ active_record.prototype.order_by = function(){
 	return this;
 }
 
-active_record.prototype.limit = function(limit, offset){
+tarps.prototype.limit = function(limit, offset){
 	if (typeof(limit)=="number"){
 		var a = this.limitObject;
 		a.clause += " LIMIT ?";
@@ -100,7 +100,7 @@ active_record.prototype.limit = function(limit, offset){
 	return this;
 }
 
-active_record.prototype.get = function(tableName, callback){
+tarps.prototype.get = function(tableName, callback){
 	var whereClause = buildWhereClause(this.whereObject);
 	var whereData = buildWhereClause(this.whereObject);
 	
@@ -123,7 +123,7 @@ active_record.prototype.get = function(tableName, callback){
 			indexCode++;
 			// 122 = z
 			if (indexCode>122)
-				throw new Error("active_record.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
+				throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
 			conn.query("SET @"+String.fromCharCode(indexCode)+" = \""+whereData.params[i]+"\"");
 		}
 	}
@@ -132,7 +132,7 @@ active_record.prototype.get = function(tableName, callback){
 		for (var i in this.limitObject.params){
 			indexCode++;
 			if (indexCode>122)
-				throw new Error("active_record.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
+				throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
 			conn.query("SET @"+String.fromCharCode(indexCode)+" = \""+this.limitObject.params[i]+"\"");
 		}
 	}
