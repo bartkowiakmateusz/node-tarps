@@ -35,6 +35,9 @@ tarps.prototype.distinct = function(){
 }
 
 tarps.prototype.join = function(tableName, field, direction){
+	if (tableName=="" || field=="")
+		return this;
+
 	allowedDirections = ["left", "right", "outer", "inner", "left outer", "right outer"];
 	if (allowedDirections.indexOf(direction.toLowerCase())==-1){
 		console.log("tarps.join() warning: Check if you haven't misspelled the direction of join clause");
