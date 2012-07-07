@@ -145,15 +145,30 @@ tarps.prototype.get = function(tableName, callback){
 	this.flush(selectQuery);
 }
 
-tarps.prototype.insert = function(tableName, data){
+tarps.prototype.insert = function(tableName, data, callback){
+	var values = _.values(data);
+	if (values.length<1){
+		throw new Error("tarps.insert(): Nothing to insert.");
+	}
+
 	var valueString;
 	var	valueArray = [];
-	for (var i=1;i<=_.values(data).length;i++){
+	for (var i=1;i<=values.length;i++){
 		valueArray.push("?");
 	}
 	valueString = valueArray.join();
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
 	console.log(insertQuery);
+	
+	var conn = this.connection;
+	conn.query("PREPARE statement FROM \'"+insertQuery+"\'");
+	setParamsObject = require("./setParams").init(conn);
+	setParamsObject.setParams(values);
+	var usingClause = setParamsObject.setUsingClause();
+	conn.query("EXECUTE statement"+usingClause, callback)
+	conn.query("DEALLOCATE PREPARE statement");
+	
+	this.flush(insertQuery);
 }
 
 buildSelectQuery = function(c){ // clauses
