@@ -110,7 +110,7 @@ tarps.prototype.limit = function(limit, offset){
 }
 
 tarps.prototype.get = function(tableName, callback){
-	var whereClause = buildWhereClause(this.whereObject);
+	//var whereClause = buildWhereClause(this.whereObject);
 	var whereData = buildWhereClause(this.whereObject);
 	
 	var selectQuery = buildSelectQuery({
@@ -124,7 +124,7 @@ tarps.prototype.get = function(tableName, callback){
 	});
 	
 	var conn = this.connection;
-	console.log(selectQuery);
+	
 	conn.query("PREPARE statement FROM \'"+selectQuery+"\'");
 	
 	setParamsObject = require("./setParams").init(conn);
@@ -158,7 +158,6 @@ tarps.prototype.insert = function(tableName, data, callback){
 	}
 	valueString = valueArray.join();
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
-	console.log(insertQuery);
 	
 	var conn = this.connection;
 	conn.query("PREPARE statement FROM \'"+insertQuery+"\'");
@@ -169,6 +168,44 @@ tarps.prototype.insert = function(tableName, data, callback){
 	conn.query("DEALLOCATE PREPARE statement");
 	
 	this.flush(insertQuery);
+}
+
+tarps.prototype.update = function(tableName, data, callback){
+	var whereData = buildWhereClause(this.whereObject);
+	
+	var values = _.values(data);
+	if (values.length<1){
+		throw new Error("tarps.update(): Nothing to update");
+	}
+	var pairs = _.map(data, function(value, key){
+		return key+"=?";
+	});
+	
+	var updateQuery = "UPDATE "+tableName
+	+" SET "+pairs.join()
+	+whereData.clause
+	+buildOrderByClause(this.orderByObject)
+	+this.limitObject.clause
+	;
+	
+	var conn = this.connection;
+	setParamsObject = require("./setParams").init(conn);
+	setParamsObject.setParams(values);
+	
+	conn.query("PREPARE statement FROM \'"+updateQuery+"\'");
+	
+	if (whereData.params.length>0){
+		setParamsObject.setParams(whereData.params);
+	}
+	if (this.limitObject.params.length>0){
+		setParamsObject.setParams(this.limitObject.params);
+	}
+	var usingClause = setParamsObject.setUsingClause();	
+	
+	conn.query("EXECUTE statement"+usingClause, callback)
+	conn.query("DEALLOCATE PREPARE statement");
+	
+	this.flush(updateQuery);
 }
 
 buildSelectQuery = function(c){ // clauses
@@ -211,7 +248,7 @@ buildOrderByClause = function(orderByObject){
 	readyClause = startingClause;
 	
 	for (i in orderByObject){
-		readyClause+=(readyClause==startingClause? "":",")+" "+i+" "+orderByObject[i];
+		readyClause+=(readyClause==startingClause? "":",")+" "+i+" "+orderByObject[i].toUpperCase();
 	}
 	return readyClause;
 }

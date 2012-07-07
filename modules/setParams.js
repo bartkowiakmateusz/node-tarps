@@ -25,6 +25,5 @@ setStatementParams.prototype.setUsingClause = function(){
 			usedIndexes.push("@"+String.fromCharCode(i));
 		}	
 	}
-	
 	return (this.indexCode>96?" USING "+usedIndexes.join():"");
 }
