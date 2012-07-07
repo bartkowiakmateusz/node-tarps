@@ -140,7 +140,7 @@ db.order_by({name: "asc", age: "desc"}).get("users", function(e, r, f){
 Insert
 ```js
 db.insert("users", {name: "John", age: "25"}, function(e, r, f){
-	// INSERT INTO userst (name, age) VALUES('John', '25')
+	// INSERT INTO users (name, age) VALUES('John', '25')
 });
 ```
 
