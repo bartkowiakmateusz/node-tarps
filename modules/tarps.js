@@ -26,7 +26,7 @@ tarps.prototype.flush = function(lastQuery){
 }
 
 tarps.prototype.select = function(arg){
-	if (typeof(arg)=="string" && arg.length>0){
+	if (typeof arg=="string" && arg.length>0){
 		this.selectClause = arg;
 	}
 	else if(arg instanceof Array && arg.length>0){
@@ -48,7 +48,7 @@ tarps.prototype.join = function(tableName, field, direction){
 	if (allowedDirections.indexOf(direction.toLowerCase())==-1){
 		console.log("tarps.join() warning: Check if you haven't misspelled the direction of join clause");
 	}
-	this.joinClause += (typeof(direction)=="undefined"? "":" "+direction.toUpperCase())+" JOIN "+tableName+" ON "+field;
+	this.joinClause += (typeof direction=="undefined"? "":" "+direction.toUpperCase())+" JOIN "+tableName+" ON "+field;
 	return this;
 }
 
@@ -58,12 +58,12 @@ tarps.prototype.join = function(tableName, field, direction){
 
 tarps.prototype.where = function(){
 	arg = arguments;
-	if (typeof(arg[0])=="string" && typeof(arg[1])=="string"){
+	if (typeof arg[0]=="string" && typeof arg[1]=="string"){
 		var operator = (arg[2]?arg[2]:"=");
 		this.whereObject[arg[0]+operator] = a = {};
 		a.text = arg[1];
 	}
-	if(typeof(arg[0])=="object"){
+	if(typeof arg[0]=="object"){
 		var operator = (arg[2]?arg[2]:"=");
 		for (var i in arg[0]){
 			this.whereObject[i+operator] = a = {};
@@ -71,7 +71,7 @@ tarps.prototype.where = function(){
 			a.or = (arg[1]===true);
 		}
 	}
-	if (typeof(arg[0])=="string" && arg[1] instanceof Array){
+	if (typeof arg[0]=="string" && arg[1] instanceof Array){
 		if (!_.isEmpty(this.whereObject)){
 			throw new Error("tarps.where(): You can only call where method in this way, when you haven't already called it before in the same query.");
 		}
@@ -84,19 +84,19 @@ tarps.prototype.where = function(){
 
 tarps.prototype.order_by = function(){
 	arg = arguments;
-	if (typeof(arg[0])=="object"){
+	if (typeof arg[0]=="object"){
 		for (i in arg[0]){
 			this.orderByObject[i] = arg[0][i];
 		}
 	}
-	else if (typeof(arg[0])=="string" && typeof(arg[1]=="string")){
+	else if (typeof arg[0]=="string" && typeof arg[1]=="string"){
 		this.orderByObject[arg[0]] = arg[1];
 	}
 	return this;
 }
 
 tarps.prototype.limit = function(limit, offset){
-	if (typeof(limit)=="number"){
+	if (typeof limit=="number"){
 		var a = this.limitObject;
 		a.clause += " LIMIT ?";
 		a.params.push(limit);
