@@ -92,7 +92,9 @@ db.join("cities", "cities.id = users.city", "left").get("users", function(e, r, 
 ```
 
 db.where(field, value, or_conjunction) or_conjunction - if true multiple instances will be joined by OR, if false or omitted instances will be joined by AND
+
 db.where({field: value, field2: value2}, or_conjunction, operator) - standard operator is =, you can change another, i.e <=, <, >, >=, !=
+
 db.where(clause, params) params should be array with parameters which replaces questions marks in the clause.
 
 Produces where clause. May be called in 3 ways:
@@ -124,6 +126,7 @@ db.where("name = ? AND age = ?", ["John", 25]).get("users", function(e, r, f){
 ```
 
 db.order_by(field, direction)
+
 db.order_by({field: direction, field2:direction})
 
 Produces order by clause. You can call this function passing field and direction as strings or an object with all desired fields and directions. Allowed directions: ASC, DESC.
