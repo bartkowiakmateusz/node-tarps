@@ -9,14 +9,20 @@ tarps = function(config){
 	this.connection = mysql.createConnection(config);
 	this.connection.connect();
 	
+	this.lastQuery = "";
+	this.flush("");
+	return this;
+}
+
+tarps.prototype.flush = function(lastQuery){
+	this.lastQuery = lastQuery;
+	
 	this.selectClause = "";
 	this.distinctClause = "";
 	this.joinClause = "";
 	this.whereObject = {};
 	this.orderByObject = {};
 	this.limitObject = {clause: "", params: []};
-	
-	return this;
 }
 
 tarps.prototype.select = function(arg){
@@ -121,37 +127,58 @@ tarps.prototype.get = function(tableName, callback){
 	console.log(selectQuery);
 	conn.query("PREPARE statement FROM \'"+selectQuery+"\'");
 	
-	var indexCode = 96; // 96 = a
+	setParamsObject = new setStatementParams(conn);
+	
 	if (whereData.params.length>0){
-		for (var i in whereData.params){
-			indexCode++;
-			// 122 = z
-			if (indexCode>122)
-				throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
-			conn.query("SET @"+String.fromCharCode(indexCode)+" = \""+whereData.params[i]+"\"");
-		}
+		setParamsObject.setParams(whereData.params);
 	}
 	
 	if (this.limitObject.params.length>0){
-		for (var i in this.limitObject.params){
-			indexCode++;
-			if (indexCode>122)
-				throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
-			conn.query("SET @"+String.fromCharCode(indexCode)+" = \""+this.limitObject.params[i]+"\"");
-		}
+		setParamsObject.setParams(this.limitObject.params);
 	}
-	
-	if (indexCode>96){
-		var usedIndexes = [];
-		for (var i=97;i<=indexCode;i++){
-			usedIndexes.push("@"+String.fromCharCode(i));
-		}	
-	}
-	var usingClause = (indexCode>96?" USING "+usedIndexes.join():"");
+	var usingClause = setStatementParams.setUsingClause();
 	
 	conn.query("EXECUTE statement"+usingClause, callback);
 	conn.query("DEALLOCATE PREPARE statement");
 	
+	this.flush(selectQuery);
+}
+
+tarps.prototype.insert = function(tableName, data){
+	var valueString;
+	var	valueArray = [];
+	for (var i=1;i<=_.values(data).length;i++){
+		valueArray.push("?");
+	}
+	valueString = valueArray.join();
+	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
+	console.log(insertQuery);
+}
+
+function setStatementParams(connection){
+	this.indexCode = 96; // 96 = a
+	this.conn = connection;
+}
+
+setStatementParams.prototype.setParams = function(params){
+	for (var i in params){
+		this.indexCode++;
+		// 122 = z
+		if (this.indexCode>122)
+			throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
+		conn.query("SET @"+String.fromCharCode(this.indexCode)+" = \""+params[i]+"\"");
+	}
+}
+
+setStatementParams.prototype.setUsingClause = function(){
+	if (this.indexCode>96){
+		var usedIndexes = [];
+		for (var i=97;i<=this.indexCode;i++){
+			usedIndexes.push("@"+String.fromCharCode(i));
+		}	
+	}
+	
+	return (this.indexCode>96?" USING "+usedIndexes.join():"");
 }
 
 buildSelectQuery = function(c){ // clauses
