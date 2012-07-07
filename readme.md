@@ -141,14 +141,21 @@ Insert
 ```js
 db.insert("users", {name: "John", age: "25"}, function(e, r, f){
 	// INSERT INTO userst (name, age) VALUES('John', '25')
-})
+});
 ```
 
 Update
 ```js
 db.where("id", "1").update("users", {name: "John"}, function(e, r, f){
 	// UPDATE users SET name = 'John' WHERE id = '1'
-})
+});
+```
+
+db.query(String query, Array params, Function callback) - makes query utilizing prepared statements
+```js
+db.query("INSERT INTO users (name, age) VALUES (?,?)", ["John", 25], function(e, r, f){
+	// ...
+});
 ```
 
 Readme still under construction...

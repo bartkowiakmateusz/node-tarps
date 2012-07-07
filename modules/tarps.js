@@ -58,7 +58,7 @@ tarps.prototype.join = function(tableName, field, direction){
 
 tarps.prototype.where = function(){
 	arg = arguments;
-	if (typeof arg[0]=="string" && typeof arg[1]=="string"){
+	if (typeof arg[0]=="string" && (typeof arg[1]=="string" || typeof arg[1]=="number")){
 		var operator = (arg[2]?arg[2]:"=");
 		this.whereObject[arg[0]+operator] = a = {};
 		a.text = arg[1];
@@ -206,6 +206,19 @@ tarps.prototype.update = function(tableName, data, callback){
 	conn.query("DEALLOCATE PREPARE statement");
 	
 	this.flush(updateQuery);
+}
+
+tarps.prototype.query = function(query, params, callback){
+	var conn = this.connection;
+	conn.query("PREPARE statement FROM \'"+query+"\'");
+	
+	setParamsObject = require("./setParams").init(conn);
+	setParamsObject.setParams(params);
+	var usingClause = setParamsObject.setUsingClause();	
+	conn.query("EXECUTE statement"+usingClause, callback)
+	
+	conn.query("DEALLOCATE PREPARE statement");
+	this.flush(query);
 }
 
 buildSelectQuery = function(c){ // clauses
