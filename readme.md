@@ -111,11 +111,11 @@ db.where("name!=", "John").get("users", function(e, r, f){
 });
 
 // 2.
-db.where({name: "John", age: "25"}).get("users", function(e, r, f){
+db.where({name: "John", age: 25}).get("users", function(e, r, f){
 	// query: 'SELECT * FROM users WHERE name = 'John' AND age = '25''
 });
 
-db.where({name: "John", age: "25"}, true, "!=").get("users", function(e, r, f){
+db.where({name: "John", age: 25}, true, "!=").get("users", function(e, r, f){
 	// query: 'SELECT * FROM users WHERE name != 'John' OR age != '25''
 });
 
