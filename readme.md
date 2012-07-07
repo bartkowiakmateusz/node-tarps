@@ -136,4 +136,19 @@ db.order_by({name: "asc", age: "desc"}).get("users", function(e, r, f){
 	// query: 'SELECT * FROM users ORDER BY name ASC, age DESC'
 });
 ```
+
+Insert
+```js
+db.insert("users", {name: "John", age: "25"}, function(e, r, f){
+	// INSERT INTO userst (name, age) VALUES('John', '25')
+})
+```
+
+Update
+```js
+db.where("id", "1").update({name: "John"}, function(e, r, f){
+	// UPDATE users SET name = 'John' WHERE id = '1'
+})
+```
+
 Readme still under construction...
