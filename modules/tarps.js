@@ -130,13 +130,15 @@ tarps.prototype.get = function(tableName, callback){
 	setParamsObject = new setStatementParams(conn);
 	
 	if (whereData.params.length>0){
+		console.log("hello");
 		setParamsObject.setParams(whereData.params);
 	}
 	
 	if (this.limitObject.params.length>0){
 		setParamsObject.setParams(this.limitObject.params);
 	}
-	var usingClause = setStatementParams.setUsingClause();
+	
+	var usingClause = setParamsObject.setUsingClause();
 	
 	conn.query("EXECUTE statement"+usingClause, callback);
 	conn.query("DEALLOCATE PREPARE statement");
@@ -155,9 +157,10 @@ tarps.prototype.insert = function(tableName, data){
 	console.log(insertQuery);
 }
 
-function setStatementParams(connection){
+setStatementParams = function(connection){
 	this.indexCode = 96; // 96 = a
 	this.conn = connection;
+	return this;
 }
 
 setStatementParams.prototype.setParams = function(params){
@@ -166,7 +169,7 @@ setStatementParams.prototype.setParams = function(params){
 		// 122 = z
 		if (this.indexCode>122)
 			throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
-		conn.query("SET @"+String.fromCharCode(this.indexCode)+" = \""+params[i]+"\"");
+		this.conn.query("SET @"+String.fromCharCode(this.indexCode)+" = \""+params[i]+"\"");
 	}
 }
 
