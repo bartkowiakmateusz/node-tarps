@@ -146,7 +146,7 @@ db.insert("users", {name: "John", age: "25"}, function(e, r, f){
 
 Update
 ```js
-db.where("id", "1").update({name: "John"}, function(e, r, f){
+db.where("id", "1").update("users", {name: "John"}, function(e, r, f){
 	// UPDATE users SET name = 'John' WHERE id = '1'
 })
 ```
