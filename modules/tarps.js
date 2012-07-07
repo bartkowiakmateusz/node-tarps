@@ -127,10 +127,9 @@ tarps.prototype.get = function(tableName, callback){
 	console.log(selectQuery);
 	conn.query("PREPARE statement FROM \'"+selectQuery+"\'");
 	
-	setParamsObject = new setStatementParams(conn);
+	setParamsObject = require("./setParams").init(conn);
 	
 	if (whereData.params.length>0){
-		console.log("hello");
 		setParamsObject.setParams(whereData.params);
 	}
 	
@@ -155,33 +154,6 @@ tarps.prototype.insert = function(tableName, data){
 	valueString = valueArray.join();
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
 	console.log(insertQuery);
-}
-
-setStatementParams = function(connection){
-	this.indexCode = 96; // 96 = a
-	this.conn = connection;
-	return this;
-}
-
-setStatementParams.prototype.setParams = function(params){
-	for (var i in params){
-		this.indexCode++;
-		// 122 = z
-		if (this.indexCode>122)
-			throw new Error("tarps.get(): Number of allowed prepare statement params has been exceeded. This restriction will be removed in future versions.");
-		this.conn.query("SET @"+String.fromCharCode(this.indexCode)+" = \""+params[i]+"\"");
-	}
-}
-
-setStatementParams.prototype.setUsingClause = function(){
-	if (this.indexCode>96){
-		var usedIndexes = [];
-		for (var i=97;i<=this.indexCode;i++){
-			usedIndexes.push("@"+String.fromCharCode(i));
-		}	
-	}
-	
-	return (this.indexCode>96?" USING "+usedIndexes.join():"");
 }
 
 buildSelectQuery = function(c){ // clauses
