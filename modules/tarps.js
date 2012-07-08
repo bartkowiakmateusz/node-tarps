@@ -123,26 +123,16 @@ tarps.prototype.get = function(tableName, callback){
 		limitClause: this.limitObject.clause
 	});
 	
-	var conn = this.connection;
-	
-	conn.query("PREPARE statement FROM \'"+selectQuery+"\'");
-	
-	setParamsObject = require("./setParams").init(conn);
-	
+	var params = [];
 	if (whereData.params.length>0){
-		setParamsObject.setParams(whereData.params);
+		params = params.concat(whereData.params);
 	}
 	
 	if (this.limitObject.params.length>0){
-		setParamsObject.setParams(this.limitObject.params);
+		params = params.concat(this.limitObject.params);
 	}
-	
-	var usingClause = setParamsObject.setUsingClause();
-	
-	conn.query("EXECUTE statement"+usingClause, callback);
-	conn.query("DEALLOCATE PREPARE statement");
-	
-	this.flush(selectQuery);
+	console.log(params);
+	this.query(selectQuery, params, callback);
 }
 
 tarps.prototype.insert = function(tableName, data, callback){
@@ -159,14 +149,7 @@ tarps.prototype.insert = function(tableName, data, callback){
 	valueString = valueArray.join();
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
 	
-	var conn = this.connection;
-	conn.query("PREPARE statement FROM \'"+insertQuery+"\'");
-	setParamsObject = require("./setParams").init(conn);
-	setParamsObject.setParams(values);
-	var usingClause = setParamsObject.setUsingClause();
-	conn.query("EXECUTE statement"+usingClause, callback)
-	conn.query("DEALLOCATE PREPARE statement");
-	
+	this.query(insertQuery, values, callback);
 	this.flush(insertQuery);
 }
 
@@ -190,21 +173,18 @@ tarps.prototype.update = function(tableName, data, callback){
 	
 	var conn = this.connection;
 	setParamsObject = require("./setParams").init(conn);
-	setParamsObject.setParams(values);
 	
-	conn.query("PREPARE statement FROM \'"+updateQuery+"\'");
+	var params = [];
 	
+	params = params.concat(values);
 	if (whereData.params.length>0){
-		setParamsObject.setParams(whereData.params);
+		params = params.concat(whereData.params);
 	}
 	if (this.limitObject.params.length>0){
-		setParamsObject.setParams(this.limitObject.params);
+		params = params.concat(this.limitObject.params);
 	}
-	var usingClause = setParamsObject.setUsingClause();	
 	
-	conn.query("EXECUTE statement"+usingClause, callback)
-	conn.query("DEALLOCATE PREPARE statement");
-	
+	this.query(updateQuery, params, callback);
 	this.flush(updateQuery);
 }
 
