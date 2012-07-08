@@ -1,13 +1,17 @@
 Transactions - Active Record - Prepared Statement for node-mysql
 
-v 0.1
+v 0.2
 
 Done:
-Active record: select with: distinct, join, where, order by, limit
+
+Active record: select with: distinct, join, where, order by, limit; insert, update
+
+Prepared statement query function
 
 To do:
-Active record: group by, having, insert, update
-Prepared statements as a indyvidual function (currently select query made by active record utilizes prepare statements)
+
+Active record: group by, having, insert ignore
+
 Transactions
 
 Example:
