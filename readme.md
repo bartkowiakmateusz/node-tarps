@@ -36,8 +36,6 @@ db
 app.listen(80);
 ```
 
-Documentation:
-
 Initializing:
 
 ```js
