@@ -49,9 +49,7 @@ var config = {
 var db = require("./modules/tarps").init(config);
 ```
 
-Active record:
-
-After obtaining db object from init function you can use to make operations in database. Currently only select is supported
+After obtaining db object from init function you can use to make operations in database.
 
 db.get(String tableName, [Function callback]) 
 
@@ -183,9 +181,10 @@ db.query("INSERT INTO users (name, age) VALUES (?,?)", ["John", 25], function(e,
 });
 ```
 
-Note: this function prepares statement, executes it and deallocate immediately, thus you can only leverage prepared statement once. If you wish prepare and then execute it many times use prepare - execute - deallocate scheme describe underneath.
+Note: this function prepares statement, executes it and deallocates immediately, thus you can only leverage prepared statement once. If you wish prepare statement and then execute it many times use prepare - execute - deallocate scheme described underneath.
 
-Preparing and executing statements: you can prepare statement and then execute it many times, but in one connection (in one db object) you can have only one prepared statement. That means you have to invoke deallocate() before calling prepare() again. If you want use more than one prepared statement initialize another db object. Please do not use 'statement' for statement name, since it's used by query function to executes queries (that would cause problems if you called query() while having allocated statement).
+## Preparing and executing statements 
+You can prepare statement and then execute it many times, but in one connection (in one db object) you can have only one prepared statement. That means you have to invoke deallocate() before calling prepare() again. If you want use more than one prepared statement initialize another db object. Please do not use 'statement' for statement name, since it's used by query function to executes queries (that would cause problems if you called query() while having allocated statement).
 
 db.prepare(String query, String statementName, [Function callback])
 
