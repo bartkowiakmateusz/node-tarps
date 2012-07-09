@@ -195,7 +195,7 @@ db.deallocate([Function callback])
 ```js
 db.prepare("INSERT INTO users (name, age) VALUES (?,?)", stmt)
 	.execute("John", 30)
-	.execute("Mary", "20")
+	.execute("Mary", 20)
 	.execute("Chris", 42)
 	.deallocate(function(e, r, f){
 		// INSERT INTO users (name, age) VALUES('John', 30)
