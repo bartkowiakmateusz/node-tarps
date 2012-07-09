@@ -23,6 +23,8 @@ tarps.prototype.flush = function(lastQuery){
 	this.whereObject = {};
 	this.orderByObject = {};
 	this.limitObject = {clause: "", params: []};
+	
+	this.preparedStatementName = "";
 }
 
 tarps.prototype.select = function(arg){
@@ -110,7 +112,6 @@ tarps.prototype.limit = function(limit, offset){
 }
 
 tarps.prototype.get = function(tableName, callback){
-	//var whereClause = buildWhereClause(this.whereObject);
 	var whereData = buildWhereClause(this.whereObject);
 	
 	var selectQuery = buildSelectQuery({
@@ -153,9 +154,7 @@ tarps.prototype.insert = function(tableName, data, callback){
 	this.flush(insertQuery);
 }
 
-tarps.prototype.update = function(tableName, data, callback){
-	var whereData = buildWhereClause(this.whereObject);
-	
+tarps.prototype.update = function(tableName, data, callback){	
 	var values = _.values(data);
 	if (values.length<1){
 		throw new Error("tarps.update(): Nothing to update");
@@ -164,15 +163,14 @@ tarps.prototype.update = function(tableName, data, callback){
 		return key+"=?";
 	});
 	
+	var whereData = buildWhereClause(this.whereObject);
+	
 	var updateQuery = "UPDATE "+tableName
 	+" SET "+pairs.join()
 	+whereData.clause
 	+buildOrderByClause(this.orderByObject)
 	+this.limitObject.clause
 	;
-	
-	var conn = this.connection;
-	setParamsObject = require("./setParams").init(conn);
 	
 	var params = [];
 	
@@ -185,7 +183,26 @@ tarps.prototype.update = function(tableName, data, callback){
 	}
 	
 	this.query(updateQuery, params, callback);
-	this.flush(updateQuery);
+}
+
+tarps.prototype.delete = function(tableName, callback){
+	var whereData = buildWhereClause(this.whereObject);
+	
+	var deleteQuery = "DELETE FROM "+tableName
+	+whereData.clause
+	+buildOrderByClause(this.orderByObject)
+	+this.limitObject.clause
+	;
+	
+	var params = [];
+	if (whereData.params.length>0){
+		params = params.concat(whereData.params);
+	}
+	if (this.limitObject.params.length>0){
+		params = params.concat(this.limitObject.params);
+	}
+	
+	this.query(deleteQuery, params, callback);
 }
 
 tarps.prototype.query = function(query, params, callback){
@@ -199,6 +216,35 @@ tarps.prototype.query = function(query, params, callback){
 	
 	conn.query("DEALLOCATE PREPARE statement");
 	this.flush(query);
+}
+
+tarps.prototype.prepare = function(query, statementName, callback){
+	if (statementName=="statement")
+		throw new Error("db.prepare(): Statement name is not allowed");
+	var conn = this.connection;
+	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'", callback);
+	this.preparedStatementName = statementName;
+	this.lastQuery = "PREPARED: "+query;
+	
+	return this;
+}
+
+tarps.prototype.execute = function(params, callback){
+	var conn = this.connection;
+	
+	setParamsObject = require("./setParams").init(conn);
+	setParamsObject.setParams(params);
+	var usingClause = setParamsObject.setUsingClause();	
+	
+	conn.query("EXECUTE "+this.preparedStatementName+usingClause, callback)
+	
+	return this;
+}
+
+tarps.prototype.deallocate = function(callback){
+	var conn = this.connection;
+	conn.query("DEALLOCATE PREPARE "+this.preparedStatementName, callback);
+	this.flush(this.lastQuery);
 }
 
 buildSelectQuery = function(c){ // clauses
