@@ -23,8 +23,6 @@ tarps.prototype.flush = function(lastQuery){
 	this.whereObject = {};
 	this.orderByObject = {};
 	this.limitObject = {clause: "", params: []};
-	
-	this.preparedStatementName = "";
 }
 
 tarps.prototype.select = function(arg){
@@ -218,12 +216,9 @@ tarps.prototype.query = function(query, params, callback){
 	this.flush(query);
 }
 
-tarps.prototype.prepare = function(query, statementName, callback){
-	if (statementName=="statement")
-		throw new Error("db.prepare(): Statement name is not allowed");
+tarps.prototype.prepare = function(query, callback){
 	var conn = this.connection;
-	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'", callback);
-	this.preparedStatementName = statementName;
+	conn.query("PREPARE stmt FROM \'"+query+"\'", callback);
 	this.lastQuery = "PREPARED: "+query;
 	
 	return this;
@@ -235,8 +230,7 @@ tarps.prototype.execute = function(params, callback){
 	setParamsObject = require("./setParams").init(conn);
 	setParamsObject.setParams(params);
 	var usingClause = setParamsObject.setUsingClause();	
-	
-	conn.query("EXECUTE "+this.preparedStatementName+usingClause, callback)
+	conn.query("EXECUTE stmt"+usingClause, callback)
 	
 	return this;
 }

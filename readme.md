@@ -179,12 +179,12 @@ db.query("INSERT INTO users (name, age) VALUES (?,?)", ["John", 25], function(e,
 });
 ```
 
-Note: this function prepares statement, executes it and deallocates immediately, thus you can only leverage prepared statement once. If you wish prepare statement and then execute it many times use prepare - execute - deallocate scheme described underneath.
+Note: this function prepares statement, executes it and deallocates immediately, thus you can only leverage prepared statement once. If you wish prepare statement and then execute it many times use prepare - execute - deallocate scheme described below.
 
 ## Preparing and executing statements 
-You can prepare statement and then execute it many times, but in one connection (in one db object) you can have only one prepared statement at the moment. That means you have to invoke deallocate() before calling prepare() again. If you want use more than one prepared statement, initialize another db object. Please do not use 'statement' for statement name, since it's used by query function to executes queries (that would cause problems if you called query() while having allocated statement).
+You can prepare statement and then execute it many times, but in one connection (in one db object) you can have only one prepared statement at the moment. That means you have to invoke deallocate() before calling prepare() again. If you want use more than one prepared statement, initialize another db object. 
 
-db.prepare(String query, String statementName, [Function callback])
+db.prepare(String query, [Function callback])
 
 db.execute(Array params, [Function callback])
 
