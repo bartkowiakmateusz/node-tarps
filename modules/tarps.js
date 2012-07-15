@@ -9,6 +9,8 @@ tarps = function(config){
 	this.connection = mysql.createConnection(config);
 	this.connection.connect();
 	
+	this.counter = 1;
+	
 	this.lastQuery = "";
 	this.flush("");
 	return this;
@@ -16,6 +18,9 @@ tarps = function(config){
 
 tarps.prototype.flush = function(lastQuery){
 	this.lastQuery = lastQuery;
+	this.autocommit = true;
+	
+	this.statementName = "";
 	
 	this.selectClause = "";
 	this.distinctClause = "";
@@ -23,6 +28,10 @@ tarps.prototype.flush = function(lastQuery){
 	this.whereObject = {};
 	this.orderByObject = {};
 	this.limitObject = {clause: "", params: []};
+}
+
+tarps.prototype.getName = function(){
+	return "tarps"+this.counter++;
 }
 
 tarps.prototype.select = function(arg){
@@ -130,8 +139,10 @@ tarps.prototype.get = function(tableName, callback){
 	if (this.limitObject.params.length>0){
 		params = params.concat(this.limitObject.params);
 	}
-	console.log(params);
-	this.query(selectQuery, params, callback);
+	
+	if (this.autocommit){
+		this.query(selectQuery, params, callback);
+	}
 }
 
 tarps.prototype.insert = function(tableName, data, callback){
@@ -148,8 +159,9 @@ tarps.prototype.insert = function(tableName, data, callback){
 	valueString = valueArray.join();
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
 	
-	this.query(insertQuery, values, callback);
-	this.flush(insertQuery);
+	if (this.autocommit){
+		this.query(insertQuery, values, callback);
+	}
 }
 
 tarps.prototype.update = function(tableName, data, callback){	
@@ -180,7 +192,9 @@ tarps.prototype.update = function(tableName, data, callback){
 		params = params.concat(this.limitObject.params);
 	}
 	
-	this.query(updateQuery, params, callback);
+	if (this.autocommit){
+		this.query(updateQuery, params, callback);
+	}
 }
 
 tarps.prototype.delete = function(tableName, callback){
@@ -200,25 +214,31 @@ tarps.prototype.delete = function(tableName, callback){
 		params = params.concat(this.limitObject.params);
 	}
 	
-	this.query(deleteQuery, params, callback);
+	if (this.autocommit){
+		this.query(deleteQuery, params, callback);
+	}
 }
 
 tarps.prototype.query = function(query, params, callback){
 	var conn = this.connection;
-	conn.query("PREPARE statement FROM \'"+query+"\'");
+	var statementName = this.getName();
 	
-	setParamsObject = require("./setParams").init(conn);
-	setParamsObject.setParams(params);
-	var usingClause = setParamsObject.setUsingClause();	
-	conn.query("EXECUTE statement"+usingClause, callback)
+	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'");
 	
-	conn.query("DEALLOCATE PREPARE statement");
+	var usingClause = this.setUsingClause(conn, params);
+	conn.query("EXECUTE "+statementName+usingClause, callback);
+	conn.query("DEALLOCATE PREPARE "+statementName);
 	this.flush(query);
+}
+
+tarps.prototype.simpleQuery = function(query, callback){
+	this.connection.query(query, callback);
 }
 
 tarps.prototype.prepare = function(query, callback){
 	var conn = this.connection;
-	conn.query("PREPARE stmt FROM \'"+query+"\'", callback);
+	this.statementName = this.getName();
+	conn.query("PREPARE "+this.statementName+" FROM \'"+query+"\'", callback);
 	this.lastQuery = "PREPARED: "+query;
 	
 	return this;
@@ -226,19 +246,30 @@ tarps.prototype.prepare = function(query, callback){
 
 tarps.prototype.execute = function(params, callback){
 	var conn = this.connection;
-	
-	setParamsObject = require("./setParams").init(conn);
-	setParamsObject.setParams(params);
-	var usingClause = setParamsObject.setUsingClause();	
-	conn.query("EXECUTE stmt"+usingClause, callback)
+	var usingClause = this.setUsingClause(conn, params);
+	conn.query("EXECUTE "+this.statementName+usingClause, callback)
 	
 	return this;
 }
 
 tarps.prototype.deallocate = function(callback){
 	var conn = this.connection;
-	conn.query("DEALLOCATE PREPARE "+this.preparedStatementName, callback);
+	conn.query("DEALLOCATE PREPARE "+this.statementName, callback);
 	this.flush(this.lastQuery);
+}
+
+tarps.prototype.setUsingClause = function(conn, params){
+	var usingClause = "";
+		if (!_.isEmpty(params)){
+			var stmtVars = [];
+			for (var i in params){
+				var varName = "@"+this.getName();
+				conn.query("SET "+varName+"=\'"+params[i]+"\'");
+				stmtVars.push(varName);
+			}
+			usingClause = " USING "+stmtVars.join();
+		}
+	return usingClause;
 }
 
 buildSelectQuery = function(c){ // clauses
