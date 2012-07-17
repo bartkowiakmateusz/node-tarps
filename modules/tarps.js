@@ -24,6 +24,8 @@ tarps.prototype.flush = function(lastQuery){
 	
 	this.statementName = "";
 	
+	this.psRollback = false;
+	
 	this.selectClause = "";
 	this.distinctClause = "";
 	this.joinClause = "";
@@ -298,27 +300,62 @@ tarps.prototype.simpleQuery = function(query, callback){
 	this.connection.query(query, callback);
 }
 
+tarps.prototype.psTransaction = function(callback){
+	var that = this;
+	this.autocommit = false;
+	this.connection.query("START TRANSACTION", function(e, r, f){
+		that.invokeCallback(callback, e, r, f);
+	});
+	return this;
+}
+
 tarps.prototype.prepare = function(query, callback){
+	var that = this;
 	var conn = this.connection;
 	this.statementName = this.getName();
-	conn.query("PREPARE "+this.statementName+" FROM \'"+query+"\'", callback);
-	this.lastQuery = "PREPARED: "+query;
-	
-	return this;
+	conn.query("PREPARE "+this.statementName+" FROM \'"+query+"\'", function(e, r, f){
+		that.lastQuery = "PREPARED: "+query;
+		that.invokeCallback(callback, e, r, f);
+	});
+	return that;
 }
 
 tarps.prototype.execute = function(params, callback){
+	var that = this;
+	if (this.psRollback){
+		return this;
+	}
 	var conn = this.connection;
 	var usingClause = this.setUsingClause(params);
-	conn.query("EXECUTE "+this.statementName+usingClause, callback)
-	
-	return this;
+	conn.query("EXECUTE "+this.statementName+usingClause, function(e, r, f){
+		if (that.autocommit == false){
+			if (e){
+				that.psRollback = true;
+			}
+		}
+		that.invokeCallback(callback, e, r, f);
+	});
+	return that;
 }
 
 tarps.prototype.deallocate = function(callback){
+	var that = this;
 	var conn = this.connection;
-	conn.query("DEALLOCATE PREPARE "+this.statementName, callback);
-	this.flush(this.lastQuery);
+	conn.query("DEALLOCATE PREPARE "+this.statementName, function(e, r, f){
+		if (that.autocommit==false){
+			if (!that.psRollback && !e){
+				conn.query("COMMIT");
+				console.log("commit");
+			}
+			else{
+				conn.query("ROLLBACK");
+				console.log("rollback");
+			}
+			that.autocommit = true;
+		}
+		that.flush(that.lastQuery);
+		that.invokeCallback(callback, e, r, f);
+	});
 }
 
 tarps.prototype.setUsingClause = function(params){
@@ -334,6 +371,17 @@ tarps.prototype.setUsingClause = function(params){
 			usingClause = " USING "+stmtVars.join();
 		}
 	return usingClause;
+}
+
+tarps.prototype.invokeCallback = function(callback, e, r, f){
+	if (typeof callback!="function"){
+		if (e){
+			console.log("Error occured: "+e);
+		}
+	}
+	else{
+		callback(e, r, f);
+	}
 }
 
 buildSelectQuery = function(c){ // clauses
