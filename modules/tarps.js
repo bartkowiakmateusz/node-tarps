@@ -9,6 +9,9 @@ tarps = function(config){
 	this.connection = mysql.createConnection(config);
 	this.connection.connect();
 	
+	this.transactionQueries = [];
+	this.autocommit = true;
+	
 	this.counter = 1;
 	
 	this.lastQuery = "";
@@ -18,7 +21,6 @@ tarps = function(config){
 
 tarps.prototype.flush = function(lastQuery){
 	this.lastQuery = lastQuery;
-	this.autocommit = true;
 	
 	this.statementName = "";
 	
@@ -28,6 +30,11 @@ tarps.prototype.flush = function(lastQuery){
 	this.whereObject = {};
 	this.orderByObject = {};
 	this.limitObject = {clause: "", params: []};
+}
+
+tarps.prototype.flushTransaction = function(){
+	this.autocommit = true;
+	this.transactionQueries = [];
 }
 
 tarps.prototype.getName = function(){
@@ -143,6 +150,10 @@ tarps.prototype.get = function(tableName, callback){
 	if (this.autocommit){
 		this.query(selectQuery, params, callback);
 	}
+	else{
+		this.addToTransaction(selectQuery, params, callback);
+		return this;
+	}
 }
 
 tarps.prototype.insert = function(tableName, data, callback){
@@ -161,6 +172,10 @@ tarps.prototype.insert = function(tableName, data, callback){
 	
 	if (this.autocommit){
 		this.query(insertQuery, values, callback);
+	}
+	else{
+		this.addToTransaction(insertQuery, values, callback);
+		return this;
 	}
 }
 
@@ -195,6 +210,10 @@ tarps.prototype.update = function(tableName, data, callback){
 	if (this.autocommit){
 		this.query(updateQuery, params, callback);
 	}
+	else{
+		this.addToTransaction(updateQuery, params, callback);
+		return this;
+	}
 }
 
 tarps.prototype.delete = function(tableName, callback){
@@ -217,18 +236,62 @@ tarps.prototype.delete = function(tableName, callback){
 	if (this.autocommit){
 		this.query(deleteQuery, params, callback);
 	}
+	else{
+		this.addToTransaction(deleteQuery, params, callback);
+		return this;
+	}
 }
 
 tarps.prototype.query = function(query, params, callback){
 	var conn = this.connection;
 	var statementName = this.getName();
-	
 	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'");
 	
-	var usingClause = this.setUsingClause(conn, params);
+	var usingClause = this.setUsingClause(params);
 	conn.query("EXECUTE "+statementName+usingClause, callback);
 	conn.query("DEALLOCATE PREPARE "+statementName);
 	this.flush(query);
+}
+
+tarps.prototype.addToTransaction = function(query, params, callback){
+	if (typeof callback=="undefined"){
+		callback = function(e){};
+	}
+	this.transactionQueries.push({query: query, params: params, callback: callback});
+}
+
+tarps.prototype.transaction = function(){
+	this.autocommit = false;
+	return this;
+}
+
+tarps.prototype.commit = function(callback){
+	var conn = this.connection;
+	var transactionError = false;
+	conn.query("START TRANSACTION");
+	var queriesFetched = 0, queriesSucceeded = 0;
+	var totalQueries = this.transactionQueries.length;
+	var tarpsObj = this;
+	
+	_.each(tarpsObj.transactionQueries, function(queryObject){
+		tarpsObj.query(queryObject.query, queryObject.params, function(e, r, f){
+			queryObject.callback(e, r, f);
+			queriesFetched++;
+			if (!e){
+				queriesSucceeded++;
+			}
+			if (queriesSucceeded==totalQueries){
+				conn.query("COMMIT", callback);
+			}
+			else{
+				if (queriesFetched==totalQueries){
+					conn.query("ROLLBACK", callback);
+				}
+			}
+			
+		});
+	});
+	this.flushTransaction();
 }
 
 tarps.prototype.simpleQuery = function(query, callback){
@@ -246,7 +309,7 @@ tarps.prototype.prepare = function(query, callback){
 
 tarps.prototype.execute = function(params, callback){
 	var conn = this.connection;
-	var usingClause = this.setUsingClause(conn, params);
+	var usingClause = this.setUsingClause(params);
 	conn.query("EXECUTE "+this.statementName+usingClause, callback)
 	
 	return this;
@@ -258,7 +321,8 @@ tarps.prototype.deallocate = function(callback){
 	this.flush(this.lastQuery);
 }
 
-tarps.prototype.setUsingClause = function(conn, params){
+tarps.prototype.setUsingClause = function(params){
+	var conn = this.connection;
 	var usingClause = "";
 		if (!_.isEmpty(params)){
 			var stmtVars = [];
