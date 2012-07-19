@@ -300,18 +300,16 @@ tarps.prototype.simpleQuery = function(query, callback){
 	this.connection.query(query, callback);
 }
 
-tarps.prototype.psTransaction = function(callback){
-	var that = this;
-	this.autocommit = false;
-	this.connection.query("START TRANSACTION", function(e, r, f){
-		that.invokeCallback(callback, e, r, f);
-	});
-	return this;
-}
-
 tarps.prototype.prepare = function(query, callback){
 	var that = this;
 	var conn = this.connection;
+	
+	if (!this.autocommit){
+		this.connection.query("START TRANSACTION", function(e, r, f){
+			that.invokeCallback(callback, e, r, f);
+		});
+	}
+	
 	this.statementName = this.getName();
 	conn.query("PREPARE "+this.statementName+" FROM \'"+query+"\'", function(e, r, f){
 		that.lastQuery = "PREPARED: "+query;
