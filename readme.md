@@ -179,27 +179,14 @@ db.query("INSERT INTO users (name, age) VALUES (?,?)", ["John", 25], function(e,
 });
 ```
 
-Note: this function prepares statement, executes it and deallocates immediately, thus you can only leverage prepared statement once. If you wish prepare statement and then execute it many times use prepare - execute - deallocate scheme described below.
+## Transactions
 
-## Preparing and executing statements 
-You can prepare statement and then execute it many times, but in one connection (in one db object) you can have only one prepared statement at the moment. That means you have to invoke deallocate() before calling prepare() again. If you want use more than one prepared statement, initialize another db object. 
-
-db.prepare(String query, [Function callback])
-
-db.execute(Array params, [Function callback])
-
-db.deallocate([Function callback])
+To execute your queries within a transaction simply call db.transaction() before the first query, and db.commit() after last of them.
 
 ```js
-db.prepare("INSERT INTO users (name, age) VALUES (?,?)", "stmt")
-	.execute("John", 30)
-	.execute("Mary", 20)
-	.execute("Chris", 42)
-	.deallocate(function(e, r, f){
-		// INSERT INTO users (name, age) VALUES('John', 30)
-		// INSERT INTO users (name, age) VALUES('Mary', 20)
-		// INSERT INTO users (name, age) VALUES('Chris', 42)
-	});
+db.transaction().insert("users", {name: "Mat"}).insert("users", {name: "John"}).commit(function(e, r, f){
+	// ...
+});
 ```
 
 Please feel free to let me know if something is unclear or missing.

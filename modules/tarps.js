@@ -22,9 +22,8 @@ tarps = function(config){
 tarps.prototype.flush = function(lastQuery){
 	this.lastQuery = lastQuery;
 	
-	this.statementName = "";
-	
-	this.psRollback = false;
+	//this.statementName = "";
+	//this.psRollback = false;
 	
 	this.selectClause = "";
 	this.distinctClause = "";
@@ -244,7 +243,7 @@ tarps.prototype.delete = function(tableName, callback){
 	}
 }
 
-tarps.prototype.query = function(query, params, callback){
+tarps.prototype.query = function(query, params, callback){ // does not work within transaction
 	var conn = this.connection;
 	var statementName = this.getName();
 	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'");
@@ -260,6 +259,7 @@ tarps.prototype.addToTransaction = function(query, params, callback){
 		callback = function(e){};
 	}
 	this.transactionQueries.push({query: query, params: params, callback: callback});
+	this.flush(query);
 }
 
 tarps.prototype.transaction = function(){
@@ -269,91 +269,33 @@ tarps.prototype.transaction = function(){
 
 tarps.prototype.commit = function(callback){
 	var conn = this.connection;
-	var transactionError = false;
 	conn.query("START TRANSACTION");
-	var queriesFetched = 0, queriesSucceeded = 0;
-	var totalQueries = this.transactionQueries.length;
-	var tarpsObj = this;
+	var self = this;
 	
-	_.each(tarpsObj.transactionQueries, function(queryObject){
-		tarpsObj.query(queryObject.query, queryObject.params, function(e, r, f){
-			queryObject.callback(e, r, f);
-			queriesFetched++;
-			if (!e){
-				queriesSucceeded++;
-			}
-			if (queriesSucceeded==totalQueries){
-				conn.query("COMMIT", callback);
-			}
-			else{
-				if (queriesFetched==totalQueries){
-					conn.query("ROLLBACK", callback);
+	function series(item){
+		if (item){
+			self.query(item.query, item.params, function(e, r, f){
+				item.callback(e, r, f);
+				if (e){
+					console.log("rollback");
+					self.query("ROLLBACK", callback);
+					self.flushTransaction();
 				}
-			}
-			
-		});
-	});
-	this.flushTransaction();
+				else{
+					series(self.transactionQueries.shift());
+				}
+			});
+		}
+		else{
+			self.query("COMMIT", callback);
+			self.flushTransaction();
+		}
+	}
+	series(self.transactionQueries.shift());
 }
 
 tarps.prototype.simpleQuery = function(query, callback){
 	this.connection.query(query, callback);
-}
-
-tarps.prototype.prepare = function(query, callback){
-	var that = this;
-	var conn = this.connection;
-	
-	if (!this.autocommit){
-		this.connection.query("START TRANSACTION", function(e, r, f){
-			that.invokeCallback(callback, e, r, f);
-		});
-	}
-	
-	this.statementName = this.getName();
-	conn.query("PREPARE "+this.statementName+" FROM \'"+query+"\'", function(e, r, f){
-		that.lastQuery = "PREPARED: "+query;
-		that.invokeCallback(callback, e, r, f);
-	});
-	return that;
-}
-
-tarps.prototype.execute = function(params, callback){
-	var that = this;
-	if (this.psRollback){
-		return this;
-	}
-	var conn = this.connection;
-	var usingClause = this.setUsingClause(params);
-	conn.query("EXECUTE "+this.statementName+usingClause, function(e, r, f){
-		if (that.autocommit == false){
-			if (e){
-				that.psRollback = true;
-			}
-		}
-		that.invokeCallback(callback, e, r, f);
-	});
-	return that;
-}
-
-tarps.prototype.deallocate = function(callback){
-	var that = this;
-	var conn = this.connection;
-	conn.query("DEALLOCATE PREPARE "+this.statementName, function(e, r, f){
-		if (that.autocommit==false){
-			if (!that.psRollback && !e){
-				conn.query("COMMIT");
-				console.log("commit");
-			}
-			else{
-				conn.query("ROLLBACK");
-				console.log("rollback");
-			}
-			that.autocommit = true;
-		}
-		that.flush(that.lastQuery);
-		that.invokeCallback(callback, e, r, f);
-	});
 }
 
 tarps.prototype.setUsingClause = function(params){
