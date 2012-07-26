@@ -181,7 +181,7 @@ db.query("INSERT INTO users (name, age) VALUES (?,?)", ["John", 25], function(e,
 
 ## Transactions
 
-To execute your queries within a transaction simply call db.transaction() before the first query, and db.commit() after last of them.
+To execute your queries within a transaction simply call db.transaction() before the first query, and db.commit() after last of them. Transactions will be automatically rolled back if one of queries fails.
 
 ```js
 db.transaction().insert("users", {name: "Mat"}).insert("users", {name: "John"}).commit(function(e, r, f){
