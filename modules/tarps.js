@@ -149,7 +149,7 @@ tarps.prototype.get = function(tableName, callback){
 	}
 	
 	if (this.autocommit){
-		this.query(selectQuery, params, callback);
+		this.executeQuery(selectQuery, params, callback);
 	}
 	else{
 		this.addToTransaction(selectQuery, params, callback);
@@ -172,7 +172,7 @@ tarps.prototype.insert = function(tableName, data, callback){
 	var insertQuery = "INSERT INTO "+tableName+" ("+_.keys(data).join()+") VALUES ("+valueString+")";
 	
 	if (this.autocommit){
-		this.query(insertQuery, values, callback);
+		this.executeQuery(insertQuery, values, callback);
 	}
 	else{
 		this.addToTransaction(insertQuery, values, callback);
@@ -209,7 +209,7 @@ tarps.prototype.update = function(tableName, data, callback){
 	}
 	
 	if (this.autocommit){
-		this.query(updateQuery, params, callback);
+		this.executeQuery(updateQuery, params, callback);
 	}
 	else{
 		this.addToTransaction(updateQuery, params, callback);
@@ -235,7 +235,7 @@ tarps.prototype.delete = function(tableName, callback){
 	}
 	
 	if (this.autocommit){
-		this.query(deleteQuery, params, callback);
+		this.executeQuery(deleteQuery, params, callback);
 	}
 	else{
 		this.addToTransaction(deleteQuery, params, callback);
@@ -243,7 +243,17 @@ tarps.prototype.delete = function(tableName, callback){
 	}
 }
 
-tarps.prototype.query = function(query, params, callback){ // does not work within transaction
+tarps.prototype.query = function(query, params, callback){
+	if (this.autocommit){
+		this.executeQuery(query, params, callback);
+	}
+	else{
+		this.addToTransaction(query, params, callback);
+		return this;
+	}
+}
+
+tarps.prototype.executeQuery = function(query, params, callback){
 	var conn = this.connection;
 	var statementName = this.getName();
 	conn.query("PREPARE "+statementName+" FROM \'"+query+"\'");
@@ -274,11 +284,10 @@ tarps.prototype.commit = function(callback){
 	
 	function series(item){
 		if (item){
-			self.query(item.query, item.params, function(e, r, f){
+			self.executeQuery(item.query, item.params, function(e, r, f){
 				item.callback(e, r, f);
 				if (e){
-					console.log("rollback");
-					self.query("ROLLBACK", callback);
+					conn.query("ROLLBACK", callback);
 					self.flushTransaction();
 				}
 				else{
@@ -287,7 +296,7 @@ tarps.prototype.commit = function(callback){
 			});
 		}
 		else{
-			self.query("COMMIT", callback);
+			conn.query("COMMIT", callback);
 			self.flushTransaction();
 		}
 	}
@@ -322,6 +331,10 @@ tarps.prototype.invokeCallback = function(callback, e, r, f){
 	else{
 		callback(e, r, f);
 	}
+}
+
+tarps.prototype.end = function(){
+	this.connection.end();
 }
 
 buildSelectQuery = function(c){ // clauses
