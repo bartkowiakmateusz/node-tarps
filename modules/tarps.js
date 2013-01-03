@@ -1,8 +1,20 @@
 var _ = require("underscore");
 
-exports.init = function(config){
-	return new tarps(config);
-}
+module.exports = {
+	// return tarps object
+	init: function(config){
+		return new tarps(config);
+	},
+	
+	dbMiddleware: function(config){
+	// return tarps object as middleware
+		var self = this;
+		return function(req, res, next){
+			req.db = self.init(config);
+			next();
+		};
+	}
+};
 
 tarps = function(config){
 	var mysql = require('mysql');
